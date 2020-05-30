@@ -79,6 +79,9 @@ CORS_ORIGIN_WHITELIST = [
     "http://localhost:3000"
 ]
 
+JWT_ACCESS_TOKEN_LIFE_SPAN = 60
+JWT_REFRESH_TOKEN_LIFE_SPAN = 360
+
 
 # Database
 # https://docs.djangoproject.com/en/1.11/ref/settings/#databases
