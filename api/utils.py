@@ -24,3 +24,14 @@ def check_token_validity(request, token):
         return False
     except:
         return False
+
+
+def check_refresh_token_validity(request, token):
+    try:
+        # when jwt iat expires token validation will fail
+        payload = jwt.decode(token, SECRET_KEY)
+        username = payload['info']
+        request.session['username'] = username
+        return True
+    except:
+        return False

@@ -15,12 +15,15 @@ import datetime
 import requests
 import json
 import jwt
+import time
 
 from .serializer import RegisterSerializer
-from .decorators import token_authentication_required
+from .decorators import token_authentication_required, refresh_token_authentication_required
 
 
 SECRET_KEY = conf_settings.SECRET_KEY
+JWT_ACCESS_TOKEN_LIFE_SPAN = conf_settings.JWT_ACCESS_TOKEN_LIFE_SPAN
+JWT_REFRESH_TOKEN_LIFE_SPAN = conf_settings.JWT_REFRESH_TOKEN_LIFE_SPAN
 
 
 def home(request):
@@ -60,8 +63,9 @@ def login(request):
     passCheck = check_password(password, user.password)
 
     if user and passCheck:
-        payload_access_token = getPayload(user.id, 60)
-        payload_refresh_token = getPayload(user.username, 360)
+        payload_access_token = getPayload(user.id, JWT_ACCESS_TOKEN_LIFE_SPAN)
+        payload_refresh_token = getPayload(
+            user.username, JWT_REFRESH_TOKEN_LIFE_SPAN)
         jwt_access_token = jwt.encode(
             payload_access_token, SECRET_KEY, algorithm='HS256')
         jwt_refresh_token = jwt.encode(
@@ -77,7 +81,7 @@ def login(request):
 
         token = {
             'access_token': jwt_access_token,
-            'expires_in': 60,
+            'expires_in': JWT_ACCESS_TOKEN_LIFE_SPAN,
             'token_type': "Bearer",
             'refresh_token': jwt_refresh_token
         }
@@ -119,3 +123,32 @@ def get_user_info(request):
         "data": user_list[0],
         "status": "200"
     }, status=status.HTTP_200_OK, content_type="application/json")
+
+
+@api_view(['GET'])
+@refresh_token_authentication_required
+def refresh(request):
+    username = request.session['username']
+    user_id = get_id_by_username(username)
+    payload_access_token = getPayload(user_id, JWT_ACCESS_TOKEN_LIFE_SPAN)
+    jwt_access_token = jwt.encode(
+        payload_access_token, SECRET_KEY, algorithm='HS256')
+    UserToken.objects.filter(user_id=user_id).update(
+        access_token=jwt_access_token)
+    token = {
+        'access_token': jwt_access_token,
+        'expires_in': JWT_ACCESS_TOKEN_LIFE_SPAN,
+        'token_type': "Bearer",
+    }
+    return Response(
+        token,
+        status=status.HTTP_200_OK,
+        content_type="application/json"
+    )
+
+
+def get_id_by_username(username):
+    users = User.objects.filter(username=username)
+    for user in users:
+        user_id = user.id
+    return user_id
